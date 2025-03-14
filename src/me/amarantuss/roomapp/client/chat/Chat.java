@@ -82,6 +82,25 @@ public class Chat implements ChatInterface, Runnable {
             return;
         }
 
+        pattern = Pattern.compile("(?<=<kick:)[0-9a-fA-F-]{36}(?=>)");
+        matcher = pattern.matcher(message);
+        if(matcher.find()) {
+            this.clientConnectionPipe.kickPacket(matcher.group());
+            return;
+        }
+
+        pattern = Pattern.compile("(?<=<admin:)[0-9a-fA-F-]{36}(?=:(true|false)>)");
+        matcher = pattern.matcher(message);
+        if(matcher.find()) {
+            String user_id = matcher.group();
+            pattern = Pattern.compile("(?<=<admin:[0-9a-fA-F-]{36}:)(true|false)(?=>)");
+            matcher = pattern.matcher(message);
+            if(matcher.find()) {
+                this.clientConnectionPipe.setAdminPacket(user_id, Boolean.parseBoolean(matcher.group()));
+                return;
+            }
+        }
+
         pattern = Pattern.compile("<leave>");
         matcher = pattern.matcher(message);
         if(matcher.find()) {

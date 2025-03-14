@@ -5,6 +5,9 @@ import me.amarantuss.roomapp.client.connection.ClientConnection;
 import me.amarantuss.roomapp.util.classes.input.Input;
 import me.amarantuss.roomapp.util.classes.network.ClientUser;
 
+import java.util.Random;
+import java.util.UUID;
+
 public class Client {
     public static void main(String args[]) {
         final String host = "127.0.0.1";

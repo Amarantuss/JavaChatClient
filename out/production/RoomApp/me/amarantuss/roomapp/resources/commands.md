@@ -1,9 +1,0 @@
-# Commands
-- `<login>` Forces sending login packet
-- `<room:x>` Creates room with size of x, for example `<room:2>`
-- `<close>` Closes the room with timer of 3 seconds
-- `<force_close>` Force closes the room without any timer
-- `<leave>` Leaves the room
-- `<locked:true/false>` Set room locked status to true or false for example `<locked:true>`
-- `<join:Id>` Joins the room with id `Id` for example `<join:da0c2be9-575b-47e7-a45f-abc750e83b7b>`
-- 

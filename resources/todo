@@ -1,0 +1,5 @@
+Add BanPacket with UUID and ban status
+Add <status> and new Packet what works for admin and sends are users name ids, connected, some stats maybe later on (like connected ever, time the Room is alive for, room size, locked etc)
+Add missing messages
+Add new Thread that sends to selected users
+Add rest of the todos xd

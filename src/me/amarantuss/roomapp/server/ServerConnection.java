@@ -5,11 +5,14 @@ import me.amarantuss.roomapp.util.classes.network.packets.Packet;
 import me.amarantuss.roomapp.util.classes.network.packets.PacketFactory;
 import me.amarantuss.roomapp.util.classes.network.packets.readers.*;
 import me.amarantuss.roomapp.util.classes.network.packets.writers.*;
-import me.amarantuss.roomapp.util.enums.RoomResponse;
+import me.amarantuss.roomapp.util.enums.RoomJoinResponse;
+import me.amarantuss.roomapp.util.enums.RoomKickResponse;
 
 import java.net.Socket;
+import java.util.UUID;
 
-//todo change packet codes XD
+//todo fix codes
+//todo make exceptions as different method like IsInRoom && IsValid
 
 public class ServerConnection {
 
@@ -41,15 +44,15 @@ public class ServerConnection {
                 CreateRoomPacketReader createRoomPacketReader = new CreateRoomPacketReader(message);
 
                 if(!createRoomPacketReader.valid()) {
-                    send(makeExceptionPacket(2, "Invalid packet format"));
+                    send(makeExceptionPacket(3, "Invalid packet format"));
                     return;
                 } else if(RoomManager.getUserRoom(serverUser) != null) {
-                    send(makeExceptionPacket(9, "You are in a room"));
+                    send(makeExceptionPacket(5, "You are in a room"));
                     return;
                 }
 
                 Room room = RoomManager.createRoom(createRoomPacketReader.getRoomSize());
-                room.join(serverUser);
+                room.join(serverUser, true);
 
                 send(makeSuccessPacket("Created room with size: " + room.getRoomSize() + " and id: " + room.getId()));
             }
@@ -57,34 +60,34 @@ public class ServerConnection {
                 JoinPacketReader joinPacketReader = new JoinPacketReader(message);
 
                 if(!joinPacketReader.valid()) {
-                    send(makeExceptionPacket(2, "Invalid packet format"));
+                    send(makeExceptionPacket(3, "Invalid packet format"));
                     return;
                 } else if(RoomManager.getUserRoom(serverUser) != null) {
-                    send(makeExceptionPacket(9, "You are already in a room"));
+                    send(makeExceptionPacket(5, "You are already in a room"));
                     return;
                 }
 
                 Room room = RoomManager.getRoom(joinPacketReader.getRoomId());
                 if(room == null) {
-                    send(makeExceptionPacket(3, "Room doesn't exist"));
+                    send(makeExceptionPacket(6, "Room doesn't exist"));
                     return;
                 }
-                RoomResponse roomResponse = room.join(serverUser);
-                switch (roomResponse) {
+                RoomJoinResponse roomJoinResponse = room.join(serverUser, false);
+                switch (roomJoinResponse) {
                     case JOINED -> send(makeSuccessPacket("Joined to the room"));
-                    case ALREADY_IN -> send(makeExceptionPacket(4, "You are already connected with this room"));
-                    case FULL -> send(makeExceptionPacket(5, "Room you are trying to connect with is full"));
-                    case LOCKED -> send(makeExceptionPacket(6, "Room you are tying to connect with is locked"));
+                    case ALREADY_IN -> send(makeExceptionPacket(7, "You are already connected with this room"));
+                    case FULL -> send(makeExceptionPacket(8, "Room you are trying to connect with is full"));
+                    case LOCKED -> send(makeExceptionPacket(9, "Room you are tying to connect with is locked"));
                 }
             }
             case CLIENT_MESSAGE -> {
                 ClientMessagePacketReader clientMessagePacketReader = new ClientMessagePacketReader(message);
 
                 if(!clientMessagePacketReader.valid()) {
-                    send(makeExceptionPacket(2, "Invalid packet format"));
+                    send(makeExceptionPacket(3, "Invalid packet format"));
                     return;
                 } else if(RoomManager.getUserRoom(serverUser) == null) {
-                    send(makeExceptionPacket(8, "You are not connected to any room"));
+                    send(makeExceptionPacket(5, "You are not connected to any room"));
                     return;
                 }
 
@@ -94,10 +97,10 @@ public class ServerConnection {
                 LeavePacketReader leavePacketReader = new LeavePacketReader(message);
 
                 if(!leavePacketReader.valid()) {
-                    send(makeExceptionPacket(2, "Invalid packet format"));
+                    send(makeExceptionPacket(3, "Invalid packet format"));
                     return;
                 } else if(RoomManager.getUserRoom(serverUser) == null) {
-                    send(makeExceptionPacket(8, "You are not connected to any room"));
+                    send(makeExceptionPacket(4, "You are not connected to any room"));
                     return;
                 }
 
@@ -110,10 +113,13 @@ public class ServerConnection {
                 CloseRoomPacketReader closeRoomPacketReader = new CloseRoomPacketReader(message);
 
                 if(!closeRoomPacketReader.valid()) {
-                    send(makeExceptionPacket(2, "Invalid packet format"));
+                    send(makeExceptionPacket(3, "Invalid packet format"));
                     return;
                 } else if(RoomManager.getUserRoom(serverUser) == null) {
-                    send(makeExceptionPacket(8, "You are not connected to any room"));
+                    send(makeExceptionPacket(4, "You are not connected to any room"));
+                    return;
+                } else if(!RoomManager.getUserRoom(serverUser).getUserRole(serverUser.getId()).isAdmin()) {
+                    send(makeExceptionPacket(12, "Not enough permissions"));
                     return;
                 }
 
@@ -131,18 +137,71 @@ public class ServerConnection {
                 LockRoomPacketReader lockRoomPacketReader = new LockRoomPacketReader(message);
 
                 if(!lockRoomPacketReader.valid()) {
-                    send(makeExceptionPacket(2, "Invalid packet format"));
+                    send(makeExceptionPacket(3, "Invalid packet format"));
                     return;
                 } else if(RoomManager.getUserRoom(serverUser) == null) {
-                    send(makeExceptionPacket(8, "You are not connected to any room"));
+                    send(makeExceptionPacket(4, "You are not connected to any room"));
+                    return;
+                } else if(!RoomManager.getUserRoom(serverUser).getUserRole(serverUser.getId()).isAdmin()) {
+                    send(makeExceptionPacket(12, "Not enough permissions"));
                     return;
                 }
 
                 Room room = RoomManager.getUserRoom(serverUser);
                 room.setLocked(lockRoomPacketReader.getLocked());
             }
+            case KICK -> {
+                KickPacketReader kickPacketReader = new KickPacketReader(message);
+
+                if(!kickPacketReader.valid()) {
+                    send(makeExceptionPacket(3, "Invalid packet format"));
+                    return;
+                } else if(RoomManager.getUserRoom(serverUser) == null) {
+                    send(makeExceptionPacket(4, "You are not connected to any room"));
+                    return;
+                } else if(!RoomManager.getUserRoom(serverUser).getUserRole(serverUser.getId()).isAdmin()) {
+                    send(makeExceptionPacket(12, "Not enough permissions"));
+                    return;
+                }
+
+                UUID user_id = kickPacketReader.getUserId();
+
+                Room room = RoomManager.getUserRoom(serverUser);
+                RoomKickResponse roomKickResponse = room.kick(user_id);
+                switch (roomKickResponse) {
+                    case IS_ADMIN -> send(makeExceptionPacket(12, "Given user is admin"));
+                    case NO_USER_FOUND -> send(makeExceptionPacket(13, "No user found"));
+                    case KICKED -> send(makeSuccessPacket("Successfully kicked user"));
+                }
+            }
+            case SET_ADMIN -> {
+                SetAdminPacketReader setAdminPacketReader = new SetAdminPacketReader(message);
+
+                if(!setAdminPacketReader.valid()) {
+                    send(makeExceptionPacket(3, "Invalid packet format"));
+                    return;
+                } else if(RoomManager.getUserRoom(serverUser) == null) {
+                    send(makeExceptionPacket(4, "You are not connected to any room"));
+                    return;
+                } else if(!RoomManager.getUserRoom(serverUser).getUserRole(serverUser.getId()).isAdmin()) {
+                    send(makeExceptionPacket(12, "Not enough permissions"));
+                    return;
+                }
+
+                Room room = RoomManager.getUserRoom(serverUser);
+                UUID user_id = setAdminPacketReader.getUserId();
+
+                if(room.getUserRole(user_id) == null) {
+                    send(makeExceptionPacket(4, "No user found"));
+                    return;
+                }
+
+                //todo add info for the user that gets or gets removed the admin
+                room.getUserRole(user_id).setAdmin(setAdminPacketReader.getAdmin());
+                send(makeSuccessPacket("Updated user admin status to: " + setAdminPacketReader.getAdmin()));
+            }
             case LOGIN -> send(makeExceptionPacket(10, "You are already logged in"));
-            case null, default -> send(makeExceptionPacket(7, "Invalid packet"));
+            case null, default -> send(makeExceptionPacket(2, "Invalid packet"));
         }
     }
 

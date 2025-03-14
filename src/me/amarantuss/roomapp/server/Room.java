@@ -1,23 +1,27 @@
 package me.amarantuss.roomapp.server;
 
-import me.amarantuss.roomapp.util.classes.input.StringFormatter;
 import me.amarantuss.roomapp.util.classes.network.ServerUser;
 import me.amarantuss.roomapp.util.classes.network.packets.Packet;
 import me.amarantuss.roomapp.util.classes.network.packets.writers.RoomBroadcastPacketWriter;
 import me.amarantuss.roomapp.util.classes.network.packets.writers.ServerMessagePacketWriter;
-import me.amarantuss.roomapp.util.enums.RoomResponse;
+import me.amarantuss.roomapp.util.enums.RoomJoinResponse;
+import me.amarantuss.roomapp.util.enums.RoomKickResponse;
 
 import java.time.LocalTime;
 import java.util.*;
-import java.util.function.IntToDoubleFunction;
+
+// todo Made a new Room Specific one message sender that starts a new Thread a send message also freeze the current Thread :)
 
 public class Room implements Runnable {
 
     private final String id;
     private final int room_size;
 
-    private final Set<ServerUser> users = new HashSet<>();
+    private final Map<UUID, ServerUser> users = new HashMap<>();
+    private final Map<UUID, RoomRole> roles = new HashMap<>();
     private final List<Packet> messages = new ArrayList<>();
+
+    private final Set<UUID> banned_users = new HashSet<>();
 
     private final Thread thread = new Thread(this);
 
@@ -30,34 +34,70 @@ public class Room implements Runnable {
         this.room_size = room_size;
     }
 
-    public RoomResponse join(ServerUser user) {
-        if(users.contains(user)) return RoomResponse.ALREADY_IN;
-        else if(locked) return RoomResponse.LOCKED;
-        else if(users.size() >= room_size) return RoomResponse.FULL;
+    private void removeUser(ServerUser serverUser) {
+        RoomManager.removeFromRoom(serverUser);
+        users.remove(serverUser.getId());
+        roles.remove(serverUser.getId());
+    }
+
+    private void addUser(ServerUser serverUser, boolean admin) {
+        RoomManager.addToRoom(serverUser, this);
+        users.put(serverUser.getId(), serverUser);
+        roles.put(serverUser.getId(), RoomRole.builder().setAdmin(admin).build());
+    }
+
+    private void adminCheck() {
+        int admins = 0;
+        for(ServerUser user : users.values()) {
+            if(roles.get(user.getId()).isAdmin()) admins++;
+        }
+
+        if(admins > 0) return;
+
+        for(UUID uuid : roles.keySet()) {
+            roles.get(uuid).setAdmin(true);
+            //todo make message for that user
+            break;
+        }
+    }
+
+    public RoomJoinResponse join(ServerUser user, boolean admin) {
+        if(users.containsKey(user.getId())) return RoomJoinResponse.ALREADY_IN;
+        else if(locked) return RoomJoinResponse.LOCKED;
+        else if(users.size() >= room_size) return RoomJoinResponse.FULL;
+//        else if(banned_users)
 
         if(!thread.isAlive()) thread.start();
 
-        users.add(user);
-        RoomManager.addToRoom(user, this);
-        broadcast("User " + user.getUsername() + " joined to the room");
-        return RoomResponse.JOINED;
+        addUser(user, admin);
+        broadcast("User " + user.getUsername() + " joined with id: " + user.getId().toString());
+        return RoomJoinResponse.JOINED;
     }
 
     public void quit(ServerUser user) {
-        users.remove(user);
-        RoomManager.removeFromRoom(user);
+        removeUser(user);
         if(users.isEmpty()) {
             forceClose();
             return;
         }
+        adminCheck();
         broadcast("User " + user.getUsername() + " left the room");
+    }
+
+    public RoomKickResponse kick(UUID uuid) {
+        if(!users.containsKey(uuid)) return RoomKickResponse.NO_USER_FOUND;
+        else if(getUserRole(uuid).isAdmin()) return RoomKickResponse.IS_ADMIN;
+
+        //todo Add some info for the user
+        removeUser(users.get(uuid));
+        return RoomKickResponse.KICKED;
     }
 
     public void run() {
         while(!closing) {
             Packet message = readMessage();
             if(closing) break;
-            for(ServerUser serverUser : users) {
+            for(ServerUser serverUser : users.values()) {
                 serverUser.getServerConnection().send(message);
             }
         }
@@ -98,6 +138,10 @@ public class Room implements Runnable {
         else broadcast("Room is now unlocked");
     }
 
+    public RoomRole getUserRole(UUID uuid) {
+        return roles.getOrDefault(uuid, null);
+    }
+
     public String getId() {
         return id;
     }
@@ -112,7 +156,7 @@ public class Room implements Runnable {
 
     public synchronized boolean forceClose() {
         if(stopping) return false;
-        for(ServerUser user : users) {
+        for(ServerUser user : users.values()) {
             RoomManager.removeFromRoom(user);
         }
         RoomManager.deleteRoom(id);
@@ -132,7 +176,7 @@ public class Room implements Runnable {
                 Thread.sleep(3000);
             } catch (InterruptedException e) {
             }
-            for(ServerUser user : users) {
+            for(ServerUser user : users.values()) {
                 RoomManager.removeFromRoom(user);
             }
             RoomManager.deleteRoom(id);

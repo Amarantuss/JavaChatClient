@@ -50,6 +50,16 @@ public class ClientConnectionPipe {
         notify();
     }
 
+    public void setAdminPacket(String user_id, boolean admin) {
+        Packet packet = new SetAdminPacketWriter().setUserId(user_id).setAdmin(admin).build();
+        this.clientConnection.send(packet);
+    }
+
+    public void kickPacket(String user_id) {
+        Packet packet = new KickPacketWriter().setUserId(user_id).build();
+        this.clientConnection.send(packet);
+    }
+
     public void lockRoomPacket(boolean locked) {
         Packet packet = new LockRoomPacketWriter().setLocked(locked).build();
         this.clientConnection.send(packet);

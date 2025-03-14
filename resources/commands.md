@@ -7,3 +7,6 @@
 - `<locked:true/false>` Set room locked status to true or false for example `<locked:true>`
 - `<join:Id>` Joins the room with id `Id` for example `<join:da0c2be9-575b-47e7-a45f-abc750e83b7b>`
 - `<exit>` Exists the chat client
+- `<kick:user_id>` Kicks the user with `user_id`
+- `<admin:user_id:true/false>` Set the user with `user_id`'s admin permissions to true or false for example`<admin:866be0b8-e5c8-486f-906f-9bf6f192452a:true>`
+- 

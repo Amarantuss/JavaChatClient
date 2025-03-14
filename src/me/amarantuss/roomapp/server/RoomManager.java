@@ -6,10 +6,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.UUID;
 
-// todo create room with user as admin
-// what allows to kicking players
-// closing, locking and shit
-// when leaving random user or next one gets the admin
+// todo:
+//  - allow to set other users as admin
+//  - what allows to kicking users
+//  - what allows to ban users
+//  - when leaving random user or next one gets the admin
 
 public class RoomManager {
     private static final HashMap<String, Room> rooms = new HashMap<>();
