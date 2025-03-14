@@ -55,6 +55,11 @@ public class ClientConnectionPipe {
         this.clientConnection.send(packet);
     }
 
+    public void setBanPacket(String user_id, boolean banned) {
+        Packet packet = new BanPacketWriter().setUserId(user_id).setBanned(banned).build();
+        this.clientConnection.send(packet);
+    }
+
     public void kickPacket(String user_id) {
         Packet packet = new KickPacketWriter().setUserId(user_id).build();
         this.clientConnection.send(packet);

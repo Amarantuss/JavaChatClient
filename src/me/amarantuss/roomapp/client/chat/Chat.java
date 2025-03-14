@@ -101,6 +101,18 @@ public class Chat implements ChatInterface, Runnable {
             }
         }
 
+        pattern = Pattern.compile("(?<=<ban:)[0-9a-fA-F-]{36}(?=:(true|false)>)");
+        matcher = pattern.matcher(message);
+        if(matcher.find()) {
+            String user_id = matcher.group();
+            pattern = Pattern.compile("(?<=<ban:[0-9a-fA-F-]{36}:)(true|false)(?=>)");
+            matcher = pattern.matcher(message);
+            if(matcher.find()) {
+                this.clientConnectionPipe.setBanPacket(user_id, Boolean.parseBoolean(matcher.group()));
+                return;
+            }
+        }
+
         pattern = Pattern.compile("<leave>");
         matcher = pattern.matcher(message);
         if(matcher.find()) {

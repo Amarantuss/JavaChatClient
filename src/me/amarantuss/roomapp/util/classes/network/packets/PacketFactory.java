@@ -4,8 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
-
-import java.util.HashMap;
+import me.amarantuss.roomapp.util.enums.PacketType;
 
 public class PacketFactory {
     public static PacketType getPacketType(String json) {

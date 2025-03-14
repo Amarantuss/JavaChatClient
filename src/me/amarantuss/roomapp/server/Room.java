@@ -4,6 +4,7 @@ import me.amarantuss.roomapp.util.classes.network.ServerUser;
 import me.amarantuss.roomapp.util.classes.network.packets.Packet;
 import me.amarantuss.roomapp.util.classes.network.packets.writers.RoomBroadcastPacketWriter;
 import me.amarantuss.roomapp.util.classes.network.packets.writers.ServerMessagePacketWriter;
+import me.amarantuss.roomapp.util.enums.RoomBanResponse;
 import me.amarantuss.roomapp.util.enums.RoomJoinResponse;
 import me.amarantuss.roomapp.util.enums.RoomKickResponse;
 
@@ -65,7 +66,7 @@ public class Room implements Runnable {
         if(users.containsKey(user.getId())) return RoomJoinResponse.ALREADY_IN;
         else if(locked) return RoomJoinResponse.LOCKED;
         else if(users.size() >= room_size) return RoomJoinResponse.FULL;
-//        else if(banned_users)
+        else if(banned_users.contains(user.getId())) return RoomJoinResponse.BANNED;
 
         if(!thread.isAlive()) thread.start();
 
@@ -91,6 +92,22 @@ public class Room implements Runnable {
         //todo Add some info for the user
         removeUser(users.get(uuid));
         return RoomKickResponse.KICKED;
+    }
+
+    public RoomBanResponse setBan(UUID uuid, boolean banned) {
+        if(roles.containsKey(uuid) && roles.get(uuid).isAdmin()) return RoomBanResponse.IS_ADMIN;
+
+        if(banned) {
+            if(banned_users.contains(uuid)) return RoomBanResponse.ALREADY_BANNED;
+            banned_users.add(uuid);
+            if(users.containsKey(uuid)) removeUser(users.get(uuid));
+            return RoomBanResponse.BANNED;
+        }
+        else {
+            if(!banned_users.contains(uuid)) return RoomBanResponse.NOT_BANNED;
+            banned_users.remove(uuid);
+            return RoomBanResponse.UNBANNED;
+        }
     }
 
     public void run() {

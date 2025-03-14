@@ -1,7 +1,7 @@
 package me.amarantuss.roomapp.client.connection;
 
-import me.amarantuss.roomapp.util.classes.network.packets.PacketType;
 import me.amarantuss.roomapp.util.classes.network.packets.readers.PacketReader;
+import me.amarantuss.roomapp.util.enums.PacketType;
 
 public class PacketWrapper {
     private final PacketType packetType;

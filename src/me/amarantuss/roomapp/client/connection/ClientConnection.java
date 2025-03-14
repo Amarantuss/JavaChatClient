@@ -4,11 +4,11 @@ import me.amarantuss.roomapp.client.ChatInterface;
 import me.amarantuss.roomapp.util.classes.network.ClientUser;
 import me.amarantuss.roomapp.util.classes.network.packets.Packet;
 import me.amarantuss.roomapp.util.classes.network.packets.PacketFactory;
-import me.amarantuss.roomapp.util.classes.network.packets.PacketType;
 import me.amarantuss.roomapp.util.classes.network.packets.readers.ExceptionPacketReader;
 import me.amarantuss.roomapp.util.classes.network.packets.readers.RoomBroadcastPacketReader;
 import me.amarantuss.roomapp.util.classes.network.packets.readers.ServerMessagePacketReader;
 import me.amarantuss.roomapp.util.classes.network.packets.readers.SuccessPacketReader;
+import me.amarantuss.roomapp.util.enums.PacketType;
 
 import java.io.IOException;
 import java.net.Socket;

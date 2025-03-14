@@ -1,6 +1,6 @@
 package me.amarantuss.roomapp.util.classes.network.packets.writers;
 
-import me.amarantuss.roomapp.util.classes.network.packets.PacketType;
+import me.amarantuss.roomapp.util.enums.PacketType;
 
 import java.util.Set;
 

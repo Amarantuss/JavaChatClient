@@ -1,10 +1,8 @@
 package me.amarantuss.roomapp.util.classes.network.packets.readers;
 
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
-import me.amarantuss.roomapp.util.classes.network.packets.PacketFactory;
-import me.amarantuss.roomapp.util.classes.network.packets.PacketType;
+import me.amarantuss.roomapp.util.enums.PacketType;
 
 public class LoginPacketReader extends PacketReader {
     private String username;

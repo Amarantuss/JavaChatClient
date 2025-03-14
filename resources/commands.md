@@ -9,4 +9,4 @@
 - `<exit>` Exists the chat client
 - `<kick:user_id>` Kicks the user with `user_id`
 - `<admin:user_id:true/false>` Set the user with `user_id`'s admin permissions to true or false for example`<admin:866be0b8-e5c8-486f-906f-9bf6f192452a:true>`
-- 
+- `<ban:user_id:true/false>` Ban the user with `user_id` with true and unbans with false for example `<ban:ae0caed3-3eec-43de-b983-ea2f091afb62:true>`

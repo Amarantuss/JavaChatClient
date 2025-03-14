@@ -2,7 +2,7 @@ package me.amarantuss.roomapp.util.classes.network.packets.readers;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
-import me.amarantuss.roomapp.util.classes.network.packets.PacketType;
+import me.amarantuss.roomapp.util.enums.PacketType;
 
 public class CloseRoomPacketReader extends PacketReader {
     private boolean force_close;

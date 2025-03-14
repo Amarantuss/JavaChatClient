@@ -1,9 +1,8 @@
 package me.amarantuss.roomapp.util.classes.network.packets;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import me.amarantuss.roomapp.util.enums.PacketType;
 
 import java.util.HashMap;
 

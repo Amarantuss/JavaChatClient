@@ -1,8 +1,6 @@
 package me.amarantuss.roomapp.util.classes.network.packets.writers;
 
-import me.amarantuss.roomapp.util.classes.network.packets.PacketType;
-
-import java.util.Set;
+import me.amarantuss.roomapp.util.enums.PacketType;
 
 public class LeavePacketWriter extends PacketWriter {
     public LeavePacketWriter() {

@@ -2,7 +2,6 @@ package me.amarantuss.roomapp.util.classes.network;
 
 import me.amarantuss.roomapp.server.ServerConnection;
 
-import java.util.HashMap;
 import java.util.UUID;
 
 public class ServerUser {

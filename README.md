@@ -33,4 +33,3 @@ Things you can expect to be added:
 - Some kind of basic encryption
 - New command that display server status (user count etc)
 - Updated packet codes and its description
-- Room admin with access to the commands like `<close>`

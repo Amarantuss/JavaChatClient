@@ -6,17 +6,19 @@ import me.amarantuss.roomapp.util.enums.PacketType;
 
 import java.util.UUID;
 
-public class KickPacketReader extends PacketReader {
+public class BanPacketReader extends PacketReader {
     private UUID user_id;
+    private boolean banned;
 
-    public KickPacketReader(String json) {
-        super(json, PacketType.KICK);
+    public BanPacketReader(String json) {
+        super(json, PacketType.BAN);
     }
 
     protected void read() {
         try {
             JsonObject content = getJsonContent();
 
+            this.banned = content.get("banned").getAsBoolean();
             try {
                 this.user_id = UUID.fromString(content.get("user_id").getAsString());
             } catch (IllegalArgumentException e) {
@@ -30,5 +32,9 @@ public class KickPacketReader extends PacketReader {
 
     public UUID getUserId() {
         return user_id;
+    }
+
+    public boolean getBanned() {
+        return banned;
     }
 }
