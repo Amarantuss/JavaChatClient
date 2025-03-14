@@ -4,12 +4,12 @@ import me.amarantuss.roomapp.client.ChatInterface;
 import me.amarantuss.roomapp.client.connection.ClientConnection;
 import me.amarantuss.roomapp.client.connection.ClientConnectionPipe;
 import me.amarantuss.roomapp.client.connection.PacketWrapper;
+import me.amarantuss.roomapp.server.RoomRole;
 import me.amarantuss.roomapp.util.classes.input.Input;
-import me.amarantuss.roomapp.util.classes.network.packets.readers.ExceptionPacketReader;
-import me.amarantuss.roomapp.util.classes.network.packets.readers.RoomBroadcastPacketReader;
-import me.amarantuss.roomapp.util.classes.network.packets.readers.ServerMessagePacketReader;
-import me.amarantuss.roomapp.util.classes.network.packets.readers.SuccessPacketReader;
+import me.amarantuss.roomapp.util.classes.network.packets.readers.*;
 
+import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -56,6 +56,21 @@ public class Chat implements ChatInterface, Runnable {
             case EXCEPTION -> {
                 ExceptionPacketReader exceptionPacketReader = (ExceptionPacketReader) packetWrapper.getPacketReader();
                 System.out.println("Exception: (Code: " + exceptionPacketReader.getCode() + ") | (Description: " + exceptionPacketReader.getDescription() + ")");
+            }
+            case STATUS -> {
+                StatusPacketReader statusPacketReader = (StatusPacketReader) packetWrapper.getPacketReader();
+
+                Map<UUID, String> users = statusPacketReader.getUsers();
+                Map<UUID, RoomRole> roles = statusPacketReader.getRoles();
+
+                System.out.println("⁂ Status Request ⁂");
+                System.out.println("Room Id: " + statusPacketReader.getRoomId());
+                System.out.println("Admins:");
+                for(UUID uuid : users.keySet()) if(roles.get(uuid).isAdmin()) System.out.println("- " + users.get(uuid) + ": " + uuid.toString());
+                System.out.println("Users:");
+                for(UUID uuid : users.keySet()) if(!roles.get(uuid).isAdmin()) System.out.println("- " + users.get(uuid) + ": " + uuid.toString());
+                System.out.println("Locked: " + statusPacketReader.isLocked());
+                System.out.println("Room Size: " + users.size() + "/" + statusPacketReader.getRoomSize());
             }
         }
     }
@@ -145,6 +160,13 @@ public class Chat implements ChatInterface, Runnable {
         matcher = pattern.matcher(message);
         if(matcher.find()) {
             this.clientConnectionPipe.closeConnection();
+            return;
+        }
+
+        pattern = Pattern.compile("<status>");
+        matcher = pattern.matcher(message);
+        if(matcher.find()) {
+            this.clientConnectionPipe.statusRequestPacket();
             return;
         }
 

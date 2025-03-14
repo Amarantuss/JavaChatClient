@@ -4,6 +4,8 @@ import me.amarantuss.roomapp.util.classes.network.ServerUser;
 import me.amarantuss.roomapp.util.classes.network.packets.Packet;
 import me.amarantuss.roomapp.util.classes.network.packets.writers.RoomBroadcastPacketWriter;
 import me.amarantuss.roomapp.util.classes.network.packets.writers.ServerMessagePacketWriter;
+import me.amarantuss.roomapp.util.classes.network.packets.writers.StatusPacketWriter;
+import me.amarantuss.roomapp.util.classes.network.packets.writers.StatusRequestPacketWriter;
 import me.amarantuss.roomapp.util.enums.RoomBanResponse;
 import me.amarantuss.roomapp.util.enums.RoomJoinResponse;
 import me.amarantuss.roomapp.util.enums.RoomKickResponse;
@@ -167,7 +169,20 @@ public class Room implements Runnable {
         return room_size;
     }
 
-    //todo display status like locked, connected_users etc
+    public Packet getStatus() {
+        StatusPacketWriter statusPacketWriter = new StatusPacketWriter();
+
+        Map<UUID, String> users = new HashMap<>();
+        for(UUID uuid : this.users.keySet()) users.put(uuid, this.users.get(uuid).getUsername());
+        statusPacketWriter.setUsers(users);
+
+        statusPacketWriter.setRoles(roles);
+        statusPacketWriter.setRoomId(id);
+        statusPacketWriter.setLocked(locked);
+        statusPacketWriter.setRoomSize(room_size);
+
+        return statusPacketWriter.build();
+    }
 
     private boolean stopping = false;
 

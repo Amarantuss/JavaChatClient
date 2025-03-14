@@ -31,5 +31,4 @@ The default CLI will be also helpful
 Things you can expect to be added:
 - GUI
 - Some kind of basic encryption
-- New command that display server status (user count etc)
 - Updated packet codes and its description

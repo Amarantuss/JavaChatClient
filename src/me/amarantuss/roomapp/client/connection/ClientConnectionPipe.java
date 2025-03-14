@@ -50,6 +50,11 @@ public class ClientConnectionPipe {
         notify();
     }
 
+    public void statusRequestPacket() {
+        Packet packet = new StatusRequestPacketWriter().build();
+        this.clientConnection.send(packet);
+    }
+
     public void setAdminPacket(String user_id, boolean admin) {
         Packet packet = new SetAdminPacketWriter().setUserId(user_id).setAdmin(admin).build();
         this.clientConnection.send(packet);

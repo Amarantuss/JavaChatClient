@@ -4,10 +4,7 @@ import me.amarantuss.roomapp.client.ChatInterface;
 import me.amarantuss.roomapp.util.classes.network.ClientUser;
 import me.amarantuss.roomapp.util.classes.network.packets.Packet;
 import me.amarantuss.roomapp.util.classes.network.packets.PacketFactory;
-import me.amarantuss.roomapp.util.classes.network.packets.readers.ExceptionPacketReader;
-import me.amarantuss.roomapp.util.classes.network.packets.readers.RoomBroadcastPacketReader;
-import me.amarantuss.roomapp.util.classes.network.packets.readers.ServerMessagePacketReader;
-import me.amarantuss.roomapp.util.classes.network.packets.readers.SuccessPacketReader;
+import me.amarantuss.roomapp.util.classes.network.packets.readers.*;
 import me.amarantuss.roomapp.util.enums.PacketType;
 
 import java.io.IOException;
@@ -48,6 +45,7 @@ public class ClientConnection {
             case SERVER_MESSAGE -> this.clientConnectionPipe.add(new PacketWrapper(PacketType.SERVER_MESSAGE, new ServerMessagePacketReader(message)));
             case SUCCESS -> this.clientConnectionPipe.add(new PacketWrapper(PacketType.SUCCESS, new SuccessPacketReader(message)));
             case ROOM_BROADCAST -> this.clientConnectionPipe.add(new PacketWrapper(PacketType.ROOM_BROADCAST, new RoomBroadcastPacketReader(message)));
+            case STATUS -> this.clientConnectionPipe.add(new PacketWrapper(PacketType.STATUS, new StatusPacketReader(message)));
             case null, default -> {
                 return;
             }

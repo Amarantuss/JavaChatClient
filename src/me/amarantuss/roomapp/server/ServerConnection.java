@@ -225,6 +225,23 @@ public class ServerConnection {
                 room.getUserRole(user_id).setAdmin(setAdminPacketReader.getAdmin());
                 send(makeSuccessPacket("Updated user admin status to: " + setAdminPacketReader.getAdmin()));
             }
+            case STATUS_REQUEST -> {
+                StatusRequestPacketReader statusRequestPacketReader = new StatusRequestPacketReader(message);
+
+                if(!statusRequestPacketReader.valid()) {
+                    send(makeExceptionPacket(3, "Invalid packet format"));
+                    return;
+                } else if(RoomManager.getUserRoom(serverUser) == null) {
+                    send(makeExceptionPacket(4, "You are not connected to any room"));
+                    return;
+                } else if(!RoomManager.getUserRoom(serverUser).getUserRole(serverUser.getId()).isAdmin()) {
+                    send(makeExceptionPacket(12, "Not enough permissions"));
+                    return;
+                }
+
+                Room room = RoomManager.getUserRoom(serverUser);
+                send(room.getStatus());
+            }
             case LOGIN -> send(makeExceptionPacket(10, "You are already logged in"));
             case null, default -> send(makeExceptionPacket(2, "Invalid packet"));
         }
