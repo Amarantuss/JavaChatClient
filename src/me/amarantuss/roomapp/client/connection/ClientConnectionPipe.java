@@ -75,8 +75,8 @@ public class ClientConnectionPipe {
         this.clientConnection.send(packet);
     }
 
-    public void closeRoomPacket(boolean force_close) {
-        Packet packet = new CloseRoomPacketWriter().setForceClose(force_close).build();
+    public void closeRoomPacket() {
+        Packet packet = new CloseRoomPacketWriter().build();
         this.clientConnection.send(packet);
     }
 

@@ -138,14 +138,7 @@ public class Chat implements ChatInterface, Runnable {
         pattern = Pattern.compile("<close>");
         matcher = pattern.matcher(message);
         if(matcher.find()) {
-            this.clientConnectionPipe.closeRoomPacket(false);
-            return;
-        }
-
-        pattern = Pattern.compile("<force_close>");
-        matcher = pattern.matcher(message);
-        if(matcher.find()) {
-            this.clientConnectionPipe.closeRoomPacket(true);
+            this.clientConnectionPipe.closeRoomPacket();
             return;
         }
 

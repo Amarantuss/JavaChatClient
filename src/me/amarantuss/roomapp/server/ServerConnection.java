@@ -1,10 +1,12 @@
 package me.amarantuss.roomapp.server;
 
+import me.amarantuss.roomapp.util.classes.network.Sender;
 import me.amarantuss.roomapp.util.classes.network.ServerUser;
 import me.amarantuss.roomapp.util.classes.network.packets.Packet;
 import me.amarantuss.roomapp.util.classes.network.packets.PacketFactory;
 import me.amarantuss.roomapp.util.classes.network.packets.readers.*;
 import me.amarantuss.roomapp.util.classes.network.packets.writers.ExceptionPacketWriter;
+import me.amarantuss.roomapp.util.classes.network.packets.writers.RoomBroadcastPacketWriter;
 import me.amarantuss.roomapp.util.classes.network.packets.writers.SuccessPacketWriter;
 import me.amarantuss.roomapp.util.enums.RoomBanResponse;
 import me.amarantuss.roomapp.util.enums.RoomJoinResponse;
@@ -14,7 +16,6 @@ import java.net.Socket;
 import java.util.UUID;
 
 //todo fix codes
-//todo make exceptions as different method like IsInRoom && IsValid
 
 public class ServerConnection {
 
@@ -121,19 +122,12 @@ public class ServerConnection {
                 } else if(RoomManager.getUserRoom(serverUser) == null) {
                     send(makeExceptionPacket(4, "You are not connected to any room"));
                     return;
-                } else if(!RoomManager.getUserRoom(serverUser).getUserRole(serverUser.getId()).isAdmin()) {
+                } else if(!RoomManager.getUserRoom(serverUser).isAdmin(serverUser)) {
                     send(makeExceptionPacket(12, "Not enough permissions"));
                     return;
                 }
 
                 Room room = RoomManager.getUserRoom(serverUser);
-
-                if(closeRoomPacketReader.getForceClose()) {
-                    boolean result = room.forceClose();
-                    if(result) send(makeSuccessPacket("Force closed room"));
-                    else send(makeExceptionPacket(11, "Room is already closing"));
-                    return;
-                }
                 room.close();
             }
             case LOCK_ROOM -> {
@@ -145,7 +139,7 @@ public class ServerConnection {
                 } else if(RoomManager.getUserRoom(serverUser) == null) {
                     send(makeExceptionPacket(4, "You are not connected to any room"));
                     return;
-                } else if(!RoomManager.getUserRoom(serverUser).getUserRole(serverUser.getId()).isAdmin()) {
+                } else if(!RoomManager.getUserRoom(serverUser).isAdmin(serverUser)) {
                     send(makeExceptionPacket(12, "Not enough permissions"));
                     return;
                 }
@@ -162,7 +156,7 @@ public class ServerConnection {
                 } else if(RoomManager.getUserRoom(serverUser) == null) {
                     send(makeExceptionPacket(4, "You are not connected to any room"));
                     return;
-                } else if(!RoomManager.getUserRoom(serverUser).getUserRole(serverUser.getId()).isAdmin()) {
+                } else if(!RoomManager.getUserRoom(serverUser).isAdmin(serverUser)) {
                     send(makeExceptionPacket(12, "Not enough permissions"));
                     return;
                 }
@@ -184,7 +178,7 @@ public class ServerConnection {
                 } else if(RoomManager.getUserRoom(serverUser) == null) {
                     send(makeExceptionPacket(4, "You are not connected to any room"));
                     return;
-                } else if(!RoomManager.getUserRoom(serverUser).getUserRole(serverUser.getId()).isAdmin()) {
+                } else if(!RoomManager.getUserRoom(serverUser).isAdmin(serverUser)) {
                     send(makeExceptionPacket(12, "Not enough permissions"));
                     return;
                 }
@@ -208,7 +202,7 @@ public class ServerConnection {
                 } else if(RoomManager.getUserRoom(serverUser) == null) {
                     send(makeExceptionPacket(4, "You are not connected to any room"));
                     return;
-                } else if(!RoomManager.getUserRoom(serverUser).getUserRole(serverUser.getId()).isAdmin()) {
+                } else if(!RoomManager.getUserRoom(serverUser).isAdmin(serverUser)) {
                     send(makeExceptionPacket(12, "Not enough permissions"));
                     return;
                 }
@@ -216,14 +210,13 @@ public class ServerConnection {
                 Room room = RoomManager.getUserRoom(serverUser);
                 UUID user_id = setAdminPacketReader.getUserId();
 
-                if(room.getUserRole(user_id) == null) {
-                    send(makeExceptionPacket(4, "No user found"));
-                    return;
+                switch(room.setAdmin(setAdminPacketReader.getUserId(), setAdminPacketReader.getAdmin())) {
+                    case NO_USER_FOUND -> send(makeExceptionPacket(0, "No user found"));
+                    case ALREADY_ADMIN -> send(makeExceptionPacket(0, "User is already admin"));
+                    case ALREADY_USER -> send(makeExceptionPacket(0, "User is already user")); //todo change that xd
+                    case DEMOTED -> send(makeSuccessPacket("Successfully demoted user"));
+                    case PROMOTED -> send(makeSuccessPacket("Successfully promoted user"));
                 }
-
-                //todo add info for the user that gets or gets removed the admin
-                room.getUserRole(user_id).setAdmin(setAdminPacketReader.getAdmin());
-                send(makeSuccessPacket("Updated user admin status to: " + setAdminPacketReader.getAdmin()));
             }
             case STATUS_REQUEST -> {
                 StatusRequestPacketReader statusRequestPacketReader = new StatusRequestPacketReader(message);
@@ -234,7 +227,7 @@ public class ServerConnection {
                 } else if(RoomManager.getUserRoom(serverUser) == null) {
                     send(makeExceptionPacket(4, "You are not connected to any room"));
                     return;
-                } else if(!RoomManager.getUserRoom(serverUser).getUserRole(serverUser.getId()).isAdmin()) {
+                } else if(!RoomManager.getUserRoom(serverUser).isAdmin(serverUser)) {
                     send(makeExceptionPacket(12, "Not enough permissions"));
                     return;
                 }

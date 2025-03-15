@@ -1,19 +1,20 @@
 package me.amarantuss.roomapp.server;
 
+import me.amarantuss.roomapp.util.classes.network.Sender;
 import me.amarantuss.roomapp.util.classes.network.ServerUser;
 import me.amarantuss.roomapp.util.classes.network.packets.Packet;
 import me.amarantuss.roomapp.util.classes.network.packets.writers.RoomBroadcastPacketWriter;
 import me.amarantuss.roomapp.util.classes.network.packets.writers.ServerMessagePacketWriter;
 import me.amarantuss.roomapp.util.classes.network.packets.writers.StatusPacketWriter;
 import me.amarantuss.roomapp.util.classes.network.packets.writers.StatusRequestPacketWriter;
+import me.amarantuss.roomapp.util.enums.RoomAdminResponse;
 import me.amarantuss.roomapp.util.enums.RoomBanResponse;
 import me.amarantuss.roomapp.util.enums.RoomJoinResponse;
 import me.amarantuss.roomapp.util.enums.RoomKickResponse;
 
+import javax.management.relation.Role;
 import java.time.LocalTime;
 import java.util.*;
-
-// todo Made a new Room Specific one message sender that starts a new Thread a send message also freeze the current Thread :)
 
 public class Room implements Runnable {
 
@@ -49,26 +50,11 @@ public class Room implements Runnable {
         roles.put(serverUser.getId(), RoomRole.builder().setAdmin(admin).build());
     }
 
-    private void adminCheck() {
-        int admins = 0;
-        for(ServerUser user : users.values()) {
-            if(roles.get(user.getId()).isAdmin()) admins++;
-        }
-
-        if(admins > 0) return;
-
-        for(UUID uuid : roles.keySet()) {
-            roles.get(uuid).setAdmin(true);
-            //todo make message for that user
-            break;
-        }
-    }
-
     public RoomJoinResponse join(ServerUser user, boolean admin) {
-        if(users.containsKey(user.getId())) return RoomJoinResponse.ALREADY_IN;
+        if(isUser(user)) return RoomJoinResponse.ALREADY_IN;
         else if(locked) return RoomJoinResponse.LOCKED;
         else if(users.size() >= room_size) return RoomJoinResponse.FULL;
-        else if(banned_users.contains(user.getId())) return RoomJoinResponse.BANNED;
+        else if(isBanned(user)) return RoomJoinResponse.BANNED;
 
         if(!thread.isAlive()) thread.start();
 
@@ -80,7 +66,7 @@ public class Room implements Runnable {
     public void quit(ServerUser user) {
         removeUser(user);
         if(users.isEmpty()) {
-            forceClose();
+            close();
             return;
         }
         adminCheck();
@@ -88,30 +74,164 @@ public class Room implements Runnable {
     }
 
     public RoomKickResponse kick(UUID uuid) {
-        if(!users.containsKey(uuid)) return RoomKickResponse.NO_USER_FOUND;
-        else if(getUserRole(uuid).isAdmin()) return RoomKickResponse.IS_ADMIN;
+        if(!isUser(uuid)) return RoomKickResponse.NO_USER_FOUND;
+        else if(isAdmin(uuid)) return RoomKickResponse.IS_ADMIN;
 
-        //todo Add some info for the user
-        removeUser(users.get(uuid));
+        Sender.builder().addUser(getUser(uuid)).setPacket(new RoomBroadcastPacketWriter().setMessage("You have been kicked").build()).build().start();
+        removeUser(getUser(uuid));
+
         return RoomKickResponse.KICKED;
     }
 
     public RoomBanResponse setBan(UUID uuid, boolean banned) {
-        if(roles.containsKey(uuid) && roles.get(uuid).isAdmin()) return RoomBanResponse.IS_ADMIN;
+        if(isUser(uuid) && isAdmin(uuid)) return RoomBanResponse.IS_ADMIN;
 
         if(banned) {
-            if(banned_users.contains(uuid)) return RoomBanResponse.ALREADY_BANNED;
+            if(isBanned(uuid)) return RoomBanResponse.ALREADY_BANNED;
             banned_users.add(uuid);
-            if(users.containsKey(uuid)) removeUser(users.get(uuid));
+
+            if(isUser(uuid)) {
+                Sender.builder().addUser(getUser(uuid)).setPacket(new RoomBroadcastPacketWriter().setMessage("You have been banned").build()).build().start();
+                removeUser(getUser(uuid));
+            }
+
             return RoomBanResponse.BANNED;
-        }
-        else {
-            if(!banned_users.contains(uuid)) return RoomBanResponse.NOT_BANNED;
+        } else {
+            if(!isBanned(uuid)) return RoomBanResponse.NOT_BANNED;
             banned_users.remove(uuid);
+
             return RoomBanResponse.UNBANNED;
         }
     }
 
+    public RoomAdminResponse setAdmin(UUID uuid, boolean admin) {
+        if(isUser(uuid)) return RoomAdminResponse.NO_USER_FOUND;
+
+        if(admin) {
+            if(!isAdmin(uuid)) {
+                getRole(uuid).setAdmin(true);
+                Sender.builder().addUser(getUser(uuid)).setPacket(new RoomBroadcastPacketWriter().setMessage("You have been promoted to admin").build()).build().start();
+                return RoomAdminResponse.PROMOTED;
+            } else return RoomAdminResponse.ALREADY_ADMIN;
+        } else {
+            if(isAdmin(uuid)) {
+                getRole(uuid).setAdmin(false);
+                Sender.builder().addUser(getUser(uuid)).setPacket(new RoomBroadcastPacketWriter().setMessage("You have been promoted to admin").build()).build().start();
+                return RoomAdminResponse.DEMOTED;
+            } else return RoomAdminResponse.ALREADY_USER;
+        }
+    }
+
+    public void setLocked(boolean locked) {
+        this.locked = locked;
+        if(locked) broadcast("Room is now locked");
+        else broadcast("Room is now unlocked");
+    }
+
+    private synchronized void broadcast(String message) {
+        messages.add(new RoomBroadcastPacketWriter().setMessage(message).build());
+        notify();
+    }
+
+    public synchronized void send(ServerUser serverUser, String message) {
+        LocalTime localTime = LocalTime.now();
+        messages.add(new ServerMessagePacketWriter().setUsername(serverUser.getUsername()).setMessage(message).setHour(localTime.getHour()).setMinute(localTime.getMinute()).setSecond(localTime.getSecond()).build());
+        notify();
+    }
+
+    private void adminCheck() {
+        int admins = 0;
+        for(ServerUser user : users.values()) {
+            if(isAdmin(user)) admins++;
+        }
+
+        if(admins > 0) return;
+
+        for(UUID uuid : roles.keySet()) {
+            getRole(uuid).setAdmin(true);
+            Sender.builder().addUser(getUser(uuid)).setPacket(new RoomBroadcastPacketWriter().setMessage("You have been promoted to admin because last admin left").build()).build().start();
+            break;
+        }
+    }
+
+    public synchronized void close() {
+        Sender.builder().addUsers(users.values()).setPacket(new RoomBroadcastPacketWriter().setMessage("Room is closing").build()).build().start();
+
+        for(ServerUser user : users.values()) {
+            RoomManager.removeFromRoom(user);
+        }
+        RoomManager.deleteRoom(id);
+
+        closing = true;
+        notify();
+    }
+
+
+    // Getters
+
+    // Public
+    public String getId() {
+        return id;
+    }
+
+    public int getRoomSize() {
+        return room_size;
+    }
+
+    public boolean isUser(UUID uuid) {
+        return users.containsKey(uuid);
+    }
+
+    public boolean isUser(ServerUser user) {
+        return users.containsKey(user.getId());
+    }
+
+    public boolean isAdmin(UUID uuid) {
+        return getRole(uuid).isAdmin();
+    }
+
+    public boolean isAdmin(ServerUser serverUser) {
+        return getRole(serverUser).isAdmin();
+    }
+
+    public boolean isBanned(UUID uuid) {
+        return banned_users.contains(uuid);
+    }
+
+    public boolean isBanned(ServerUser user) {
+        return banned_users.contains(user.getId());
+    }
+
+    public Packet getStatus() {
+        StatusPacketWriter statusPacketWriter = new StatusPacketWriter();
+
+        Map<UUID, String> users = new HashMap<>();
+        for(UUID uuid : this.users.keySet()) users.put(uuid, getUser(uuid).getUsername());
+        statusPacketWriter.setUsers(users);
+
+        statusPacketWriter.setRoles(roles);
+        statusPacketWriter.setRoomId(id);
+        statusPacketWriter.setLocked(locked);
+        statusPacketWriter.setRoomSize(room_size);
+
+        return statusPacketWriter.build();
+    }
+
+    // Private
+    private RoomRole getRole(UUID uuid) {
+        return roles.getOrDefault(uuid, null);
+    }
+
+    private RoomRole getRole(ServerUser serverUser) {
+        return roles.getOrDefault(serverUser.getId(), null);
+    }
+
+    private ServerUser getUser(UUID uuid) {
+        return users.getOrDefault(uuid, null);
+    }
+
+
+    // Thread related
     public void run() {
         while(!closing) {
             Packet message = readMessage();
@@ -140,86 +260,4 @@ public class Room implements Runnable {
         return firstMessage;
     }
 
-    private synchronized void broadcast(String message) {
-        messages.add(new RoomBroadcastPacketWriter().setMessage(message).build());
-        notify();
-    }
-
-    public synchronized void send(ServerUser serverUser, String message) {
-        LocalTime localTime = LocalTime.now();
-        messages.add(new ServerMessagePacketWriter().setUsername(serverUser.getUsername()).setMessage(message).setHour(localTime.getHour()).setMinute(localTime.getMinute()).setSecond(localTime.getSecond()).build());
-        notify();
-    }
-
-    public void setLocked(boolean locked) {
-        this.locked = locked;
-        if(locked) broadcast("Room is now locked");
-        else broadcast("Room is now unlocked");
-    }
-
-    public RoomRole getUserRole(UUID uuid) {
-        return roles.getOrDefault(uuid, null);
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public int getRoomSize() {
-        return room_size;
-    }
-
-    public Packet getStatus() {
-        StatusPacketWriter statusPacketWriter = new StatusPacketWriter();
-
-        Map<UUID, String> users = new HashMap<>();
-        for(UUID uuid : this.users.keySet()) users.put(uuid, this.users.get(uuid).getUsername());
-        statusPacketWriter.setUsers(users);
-
-        statusPacketWriter.setRoles(roles);
-        statusPacketWriter.setRoomId(id);
-        statusPacketWriter.setLocked(locked);
-        statusPacketWriter.setRoomSize(room_size);
-
-        return statusPacketWriter.build();
-    }
-
-    private boolean stopping = false;
-
-    public synchronized boolean forceClose() {
-        if(stopping) return false;
-        for(ServerUser user : users.values()) {
-            RoomManager.removeFromRoom(user);
-        }
-        RoomManager.deleteRoom(id);
-
-        closing = true;
-        notify();
-        return true;
-    }
-
-    public synchronized void close() {
-        if(stopping) return;
-
-        stopping = true;
-        if(!users.isEmpty()) broadcast("Room will be closed in 3 seconds");
-        new Thread(() -> {
-            try {
-                Thread.sleep(3000);
-            } catch (InterruptedException e) {
-            }
-            for(ServerUser user : users.values()) {
-                RoomManager.removeFromRoom(user);
-            }
-            RoomManager.deleteRoom(id);
-
-            closing = true;
-            //Normal notify() won't work here
-            notifyThread();
-        }).start();
-    }
-
-    private synchronized void notifyThread() {
-        notify();
-    }
 }
